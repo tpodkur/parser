@@ -1,47 +1,63 @@
-import com.github.igorsuhorukov.phantomjs.PhantomJsDowloader;
-
-import org.jsoup.*;
-import org.jsoup.nodes.*;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import java.util.concurrent.TimeUnit;
+import java.util.Date;
 
-import com.github.igorsuhorukov.phantomjs.PhantomJsDowloader;
-import org.openqa.selenium.*;
-import org.openqa.selenium.phantomjs.PhantomJSDriver;
-import org.openqa.selenium.phantomjs.PhantomJSDriverService;
-import org.openqa.selenium.remote.DesiredCapabilities;
 
 public class Main {
+    public static void main(String[] args) throws InterruptedException {
+        String url = "https://stepik.org/catalog?tag=866";
+        CoursesSetParser setParser = new CoursesSetParser();
+        setParser.loadCourses(url, "section");
+    }
 
-    public static void main(String[] args) {
-
-//        try {
-//            Document doc = Jsoup.connect("https://stepik.org/catalog")
-//                    .userAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36")
-//                    .get();
-//            String html = doc.outerHtml();
-//            System.out.println(html);
-//
-//        } catch (IOException e) {
-//        }
-
+    public void parser() throws InterruptedException {
+        String url = "https://stepik.org/catalog";
         System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
         WebDriver driver = new ChromeDriver();
-        driver.get("https://stepik.org/catalog");
-        List<WebElement> elements = driver.findElement(By.className("course-pack")).findElements(By.tagName("li"));
-        for (WebElement element : elements) {
-            String href = element.getAttribute("id");
-            System.out.println(href);
+
+//        driver.manage().timeouts().implicitlyWait(240, TimeUnit.SECONDS);
+        driver.get(url);
+
+//        WebDriverWait wait = new WebDriverWait(driver, 60);
+//        wait.until(new ExpectedCondition<Boolean>() {
+//            public Boolean apply(WebDriver wdriver) {
+//                return ((JavascriptExecutor) driver).executeScript(
+//                        "return document.readyState"
+//                ).equals("complete");
+//            }
+//        });
+        TimeUnit.SECONDS.sleep(30);
+
+        List<WebElement> courseSets = driver
+                .findElement(By.className("st-course-filters"))
+                .findElements(By.className("st-filter"));
+
+        List<Link> courseLinks = new ArrayList<Link>();
+        for (WebElement courseSet : courseSets) {
+            List<WebElement> listItems = courseSet.findElements(By.className("st-filter__item"));
+            for (WebElement listItem : listItems) {
+                WebElement linkElement = listItem.findElement(By.className("st-filter__link"));
+                String link = linkElement.getAttribute("href");
+                String section = linkElement.getText();
+
+                Link newLink = new Link(link, section);
+                courseLinks.add(newLink);
+            }
         }
-//        String href = elements.getAttribute("href");
-//        System.out.println(href);
+
+        CoursesSetParser setParser = new CoursesSetParser();
+        for (Link courseLink : courseLinks) {
+            setParser.loadCourses(courseLink.getLink(), courseLink.getSection());
+        }
+
+        driver.quit();
     }
 }
